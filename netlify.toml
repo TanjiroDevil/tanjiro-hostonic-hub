@@ -1,0 +1,18 @@
+# إعدادات البناء
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "api"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# توجيه باقي الروابط لـ React Router (لحل مشكلة 404 عند عمل Refresh)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
