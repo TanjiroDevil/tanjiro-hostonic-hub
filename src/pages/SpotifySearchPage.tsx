@@ -36,6 +36,51 @@ export function SpotifySearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
+  const [downloading, setDownloading] = useState<Record<string, 'loading' | 'done'>>({});
+
+  const handleDownload = async (track: Track) => {
+    if (downloading[track.id]) return;
+    setDownloading((p) => ({ ...p, [track.id]: 'loading' }));
+    const loadingToast = toast.loading('جاري تحضير ملف الصوت...');
+    try {
+      const res = await fetch(`https://tanjirodev.online/api/spotify-download?url=${encodeURIComponent(track.url)}`);
+      if (!res.ok) throw new Error('fail');
+      const data = await res.json();
+      if (data.status !== 'success' || !data.download_url) throw new Error('fail');
+
+      // Programmatic download
+      const fileRes = await fetch(data.download_url);
+      const blob = await fileRes.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const safeName = `${(data.title || track.name)} - ${(data.artist || track.artist)}`.replace(/[\\/:*?"<>|]+/g, '').trim();
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${safeName}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+      toast.dismiss(loadingToast);
+      toast.success('تم تحميل الأغنية بنجاح!');
+      setDownloading((p) => ({ ...p, [track.id]: 'done' }));
+      setTimeout(() => {
+        setDownloading((p) => {
+          const next = { ...p };
+          delete next[track.id];
+          return next;
+        });
+      }, 2500);
+    } catch {
+      toast.dismiss(loadingToast);
+      toast.error('عذراً، السيرفر مشغول حالياً');
+      setDownloading((p) => {
+        const next = { ...p };
+        delete next[track.id];
+        return next;
+      });
+    }
+  };
 
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
