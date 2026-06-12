@@ -301,6 +301,33 @@ export function SpotifySearchPage() {
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(track)}
+                        disabled={!!downloading[track.id]}
+                        data-download-trigger="true"
+                        data-track-url={track.url}
+                        aria-label={`Download ${track.name}`}
+                        className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-green-600/90 to-emerald-600/90 hover:from-green-500 hover:to-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2 rounded-lg transition-all shadow-md shadow-green-500/20 hover:shadow-green-500/40 active:scale-[0.98]"
+                      >
+                        {downloading[track.id] === 'loading' ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>جاري استخراج الملف...</span>
+                          </>
+                        ) : downloading[track.id] === 'done' ? (
+                          <>
+                            <Check className="h-4 w-4" />
+                            <span>تم التحميل</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4" />
+                            <span>تحميل MP3</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </motion.article>
                 ))}
