@@ -341,6 +341,56 @@ export function SpotifySearchPage() {
           </div>
         )}
       </section>
+
+      {/* Global preparing overlay */}
+      <AnimatePresence>
+        {isPreparing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/70 backdrop-blur-md"
+            data-global-loading="true"
+            aria-live="polite"
+            role="status"
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+              className="relative flex flex-col items-center gap-5 px-8 py-7 rounded-2xl bg-gray-900/80 border border-green-500/30 shadow-2xl shadow-green-500/20"
+            >
+              <div className="relative w-20 h-20">
+                <div className="absolute inset-0 rounded-full border-4 border-gray-700/50" />
+                <motion.div
+                  className="absolute inset-0 rounded-full border-4 border-transparent border-t-green-400 border-r-blue-500"
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                />
+                <motion.div
+                  className="absolute inset-2 rounded-full border-2 border-transparent border-b-emerald-400"
+                  animate={{ rotate: -360 }}
+                  transition={{ repeat: Infinity, duration: 1.6, ease: 'linear' }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Music className="h-7 w-7 text-green-400" />
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-white font-semibold text-base">جاري تحضير الأغنية</p>
+                <p className="text-gray-400 text-xs mt-1">يرجى الانتظار لحظات...</p>
+              </div>
+              <motion.div
+                className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-green-500/20 via-blue-500/20 to-emerald-500/20 -z-10 blur-xl"
+                animate={{ opacity: [0.4, 0.8, 0.4] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
