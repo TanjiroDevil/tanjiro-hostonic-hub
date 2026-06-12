@@ -1,6 +1,7 @@
 import React, { useState, FormEvent } from 'react';
-import { Search, Music, ExternalLink, Loader2, Play } from 'lucide-react';
+import { Search, Music, ExternalLink, Loader2, Play, Download, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { SectionBackground } from '../components/SectionBackground';
 
 interface Track {
