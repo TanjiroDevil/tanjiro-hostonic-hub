@@ -1,6 +1,7 @@
 import React, { useState, FormEvent } from 'react';
-import { Search, Music, ExternalLink, Loader2, Play } from 'lucide-react';
+import { Search, Music, ExternalLink, Loader2, Play, Download, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { SectionBackground } from '../components/SectionBackground';
 
 interface Track {
@@ -35,6 +36,51 @@ export function SpotifySearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
+  const [downloading, setDownloading] = useState<Record<string, 'loading' | 'done'>>({});
+
+  const handleDownload = async (track: Track) => {
+    if (downloading[track.id]) return;
+    setDownloading((p) => ({ ...p, [track.id]: 'loading' }));
+    const loadingToast = toast.loading('جاري تحضير ملف الصوت...');
+    try {
+      const res = await fetch(`https://tanjirodev.online/api/spotify-download?url=${encodeURIComponent(track.url)}`);
+      if (!res.ok) throw new Error('fail');
+      const data = await res.json();
+      if (data.status !== 'success' || !data.download_url) throw new Error('fail');
+
+      // Programmatic download
+      const fileRes = await fetch(data.download_url);
+      const blob = await fileRes.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const safeName = `${(data.title || track.name)} - ${(data.artist || track.artist)}`.replace(/[\\/:*?"<>|]+/g, '').trim();
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${safeName}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+      toast.dismiss(loadingToast);
+      toast.success('تم تحميل الأغنية بنجاح!');
+      setDownloading((p) => ({ ...p, [track.id]: 'done' }));
+      setTimeout(() => {
+        setDownloading((p) => {
+          const next = { ...p };
+          delete next[track.id];
+          return next;
+        });
+      }, 2500);
+    } catch {
+      toast.dismiss(loadingToast);
+      toast.error('عذراً، السيرفر مشغول حالياً');
+      setDownloading((p) => {
+        const next = { ...p };
+        delete next[track.id];
+        return next;
+      });
+    }
+  };
 
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
@@ -255,6 +301,33 @@ export function SpotifySearchPage() {
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(track)}
+                        disabled={!!downloading[track.id]}
+                        data-download-trigger="true"
+                        data-track-url={track.url}
+                        aria-label={`Download ${track.name}`}
+                        className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-green-600/90 to-emerald-600/90 hover:from-green-500 hover:to-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2 rounded-lg transition-all shadow-md shadow-green-500/20 hover:shadow-green-500/40 active:scale-[0.98]"
+                      >
+                        {downloading[track.id] === 'loading' ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>جاري استخراج الملف...</span>
+                          </>
+                        ) : downloading[track.id] === 'done' ? (
+                          <>
+                            <Check className="h-4 w-4" />
+                            <span>تم التحميل</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4" />
+                            <span>تحميل MP3</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </motion.article>
                 ))}
