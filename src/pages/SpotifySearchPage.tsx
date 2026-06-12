@@ -37,10 +37,12 @@ export function SpotifySearchPage() {
   const [searched, setSearched] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const [downloading, setDownloading] = useState<Record<string, 'loading' | 'done'>>({});
+  const [isPreparing, setIsPreparing] = useState(false);
 
   const handleDownload = async (track: Track) => {
     if (downloading[track.id]) return;
     setDownloading((p) => ({ ...p, [track.id]: 'loading' }));
+    setIsPreparing(true);
     const loadingToast = toast.loading('جاري تحضير ملف الصوت...');
     try {
       const res = await fetch(`https://tanjirodev.online/api/spotify-download?url=${encodeURIComponent(track.url)}`);
@@ -48,21 +50,22 @@ export function SpotifySearchPage() {
       const data = await res.json();
       if (data.status !== 'success' || !data.download_url) throw new Error('fail');
 
-      // Programmatic download
-      const fileRes = await fetch(data.download_url);
-      const blob = await fileRes.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const safeName = `${(data.title || track.name)} - ${(data.artist || track.artist)}`.replace(/[\\/:*?"<>|]+/g, '').trim();
+      const safeName = `${(data.title || track.name)} - ${(data.artist || track.artist)}`
+        .replace(/[\\/:*?"<>|]+/g, '')
+        .trim();
+
+      // Trigger download directly via anchor (acts like clicking the download link)
       const a = document.createElement('a');
-      a.href = blobUrl;
+      a.href = data.download_url;
       a.download = `${safeName}.mp3`;
+      a.rel = 'noopener';
+      a.target = '_self';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 
       toast.dismiss(loadingToast);
-      toast.success('تم تحميل الأغنية بنجاح!');
+      toast.success('جاري التحميل...');
       setDownloading((p) => ({ ...p, [track.id]: 'done' }));
       setTimeout(() => {
         setDownloading((p) => {
@@ -79,6 +82,8 @@ export function SpotifySearchPage() {
         delete next[track.id];
         return next;
       });
+    } finally {
+      setIsPreparing(false);
     }
   };
 
