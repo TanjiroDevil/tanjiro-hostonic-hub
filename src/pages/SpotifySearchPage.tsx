@@ -27,6 +27,15 @@ function formatDuration(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+function getDirectAudioUrl(downloadUrl: string): string {
+  try {
+    const parsedUrl = new URL(downloadUrl);
+    return parsedUrl.searchParams.get('mp3url') || downloadUrl;
+  } catch {
+    return downloadUrl;
+  }
+}
+
 export function SpotifySearchPage() {
   const [query, setQuery] = useState('');
   const [artist, setArtist] = useState('');
@@ -54,20 +63,18 @@ export function SpotifySearchPage() {
         .replace(/[\\/:*?"<>|]+/g, '')
         .trim();
 
-      // Fetch the actual audio file as a blob so the browser saves it
-      // instead of navigating to the proxy URL (which returns JSON in a new tab).
-      const fileRes = await fetch(data.download_url);
-      if (!fileRes.ok) throw new Error('file fail');
-      const blob = await fileRes.blob();
-      const blobUrl = URL.createObjectURL(blob);
+      const directAudioUrl = getDirectAudioUrl(data.download_url);
+      if (!directAudioUrl || directAudioUrl === data.download_url && data.download_url.includes('proxy=true')) {
+        throw new Error('missing audio url');
+      }
 
       const a = document.createElement('a');
-      a.href = blobUrl;
+      a.href = directAudioUrl;
       a.download = `${safeName}.mp3`;
+      a.rel = 'noopener noreferrer';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
 
       toast.dismiss(loadingToast);
       toast.success('جاري التحميل...');
