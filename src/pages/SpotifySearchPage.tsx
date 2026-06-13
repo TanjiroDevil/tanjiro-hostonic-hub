@@ -54,15 +54,20 @@ export function SpotifySearchPage() {
         .replace(/[\\/:*?"<>|]+/g, '')
         .trim();
 
-      // Trigger download directly via anchor (acts like clicking the download link)
+      // Fetch the actual audio file as a blob so the browser saves it
+      // instead of navigating to the proxy URL (which returns JSON in a new tab).
+      const fileRes = await fetch(data.download_url);
+      if (!fileRes.ok) throw new Error('file fail');
+      const blob = await fileRes.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
       const a = document.createElement('a');
-      a.href = data.download_url;
+      a.href = blobUrl;
       a.download = `${safeName}.mp3`;
-      a.rel = 'noopener';
-      a.target = '_self';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
 
       toast.dismiss(loadingToast);
       toast.success('جاري التحميل...');
