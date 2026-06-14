@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { Server, Menu, X, LogOut, User } from 'lucide-react';
+import { Server, Menu, X, LogOut, User, ChevronDown, Download, Music2, Youtube, Instagram, Ghost } from 'lucide-react';
 import { auth } from '../config/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
