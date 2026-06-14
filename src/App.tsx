@@ -7,6 +7,7 @@ import { APIsPage } from './pages/APIsPage';
 import { PricingPage } from './pages/PricingPage';
 import { ContactPage } from './pages/ContactPage';
 import { SpotifySearchPage } from './pages/SpotifySearchPage';
+import { DownloadsHubPage } from './pages/DownloadsHubPage';
 import { AuthPage } from './pages/AuthPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { NotFoundPage } from './pages/NotFoundPage';
