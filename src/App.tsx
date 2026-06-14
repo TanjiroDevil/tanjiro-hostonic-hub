@@ -75,6 +75,8 @@ function App() {
         <Route path="apis" element={<APIsPage />} />
         <Route path="pricing" element={<PricingPage />} />
         <Route path="contact" element={<ContactPage />} />
+        <Route path="downloads" element={<DownloadsHubPage />} />
+        <Route path="downloads/spotify" element={<SpotifySearchPage />} />
         <Route path="spotify-search" element={<SpotifySearchPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
