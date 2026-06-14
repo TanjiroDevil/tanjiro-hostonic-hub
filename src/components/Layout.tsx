@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { Server, Menu, X, LogOut, User } from 'lucide-react';
+import { Server, Menu, X, LogOut, User, ChevronDown, Download, Music2, Youtube, Instagram, Ghost } from 'lucide-react';
 import { auth } from '../config/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
 export function Layout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDownloadsOpen, setIsDownloadsOpen] = useState(false);
+  const [isMobileDownloadsOpen, setIsMobileDownloadsOpen] = useState(false);
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
 
@@ -35,6 +37,72 @@ export function Layout() {
               <div className="hidden md:flex items-center space-x-8">
                 <Link to="/" className="text-gray-300 hover:text-blue-500 transition-colors">Home</Link>
                 <Link to="/features" className="text-gray-300 hover:text-blue-500 transition-colors">Features</Link>
+
+                {/* Downloads Dropdown */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => setIsDownloadsOpen(true)}
+                  onMouseLeave={() => setIsDownloadsOpen(false)}
+                >
+                  <Link
+                    to="/downloads"
+                    className="flex items-center gap-1 text-gray-300 hover:text-blue-500 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Downloads</span>
+                    <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isDownloadsOpen ? 'rotate-180' : ''}`} />
+                  </Link>
+
+                  {isDownloadsOpen && (
+                    <div className="absolute top-full right-0 pt-3 w-72 z-50">
+                      <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/60 rounded-2xl shadow-2xl shadow-blue-500/10 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <Link
+                          to="/spotify-search"
+                          onClick={() => setIsDownloadsOpen(false)}
+                          className="flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-500/10 transition-colors group"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-700 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                            <Music2 className="h-5 w-5 text-white" />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <div className="text-white font-semibold text-sm">Spotify</div>
+                            <div className="text-gray-400 text-xs">Search & Download tracks</div>
+                          </div>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">LIVE</span>
+                        </Link>
+
+                        {[
+                          { name: 'YouTube', icon: Youtube, gradient: 'from-red-500 to-rose-700' },
+                          { name: 'Instagram', icon: Instagram, gradient: 'from-purple-500 via-pink-500 to-orange-500' },
+                          { name: 'Snapchat', icon: Ghost, gradient: 'from-yellow-400 to-amber-500' },
+                        ].map((s) => (
+                          <div
+                            key={s.name}
+                            className="flex items-center gap-3 p-3 rounded-xl opacity-60 cursor-not-allowed"
+                          >
+                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.gradient} flex items-center justify-center shadow-lg`}>
+                              <s.icon className="h-5 w-5 text-white" />
+                            </div>
+                            <div className="flex-1 text-left">
+                              <div className="text-white font-semibold text-sm">{s.name}</div>
+                              <div className="text-gray-400 text-xs">Coming soon</div>
+                            </div>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-700/60 text-gray-300 border border-gray-600/50">SOON</span>
+                          </div>
+                        ))}
+
+                        <Link
+                          to="/downloads"
+                          onClick={() => setIsDownloadsOpen(false)}
+                          className="block text-center mt-2 py-2 rounded-xl bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-blue-300 text-xs font-semibold hover:from-blue-600/30 hover:to-cyan-600/30 transition-all border border-blue-500/20"
+                        >
+                          Explore all services →
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <Link to="/apis" className="text-gray-300 hover:text-blue-500 transition-colors">APIs</Link>
                 <Link to="/pricing" className="text-gray-300 hover:text-blue-500 transition-colors">Pricing</Link>
                 <Link to="/contact" className="text-gray-300 hover:text-blue-500 transition-colors">Contact</Link>
@@ -83,6 +151,30 @@ export function Layout() {
                 <div className="px-2 pt-2 pb-3 space-y-1">
                   <Link to="/" className="block px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md">Home</Link>
                   <Link to="/features" className="block px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md">Features</Link>
+
+                  {/* Mobile Downloads collapsible */}
+                  <button
+                    onClick={() => setIsMobileDownloadsOpen(!isMobileDownloadsOpen)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      Downloads
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${isMobileDownloadsOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {isMobileDownloadsOpen && (
+                    <div className="ml-6 space-y-1 border-l border-gray-700/50 pl-3">
+                      <Link to="/downloads" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-blue-300 hover:bg-gray-800 rounded-md text-sm">
+                        All services
+                      </Link>
+                      <Link to="/spotify-search" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md text-sm">
+                        <Music2 className="h-4 w-4 text-emerald-400" /> Spotify
+                      </Link>
+                      <div className="px-3 py-2 text-gray-500 text-xs">YouTube · Instagram · Snapchat (قريباً)</div>
+                    </div>
+                  )}
+
                   <Link to="/apis" className="block px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md">APIs</Link>
                   <Link to="/pricing" className="block px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md">Pricing</Link>
                   <Link to="/contact" className="block px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md">Contact</Link>

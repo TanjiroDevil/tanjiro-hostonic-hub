@@ -7,6 +7,7 @@ import { APIsPage } from './pages/APIsPage';
 import { PricingPage } from './pages/PricingPage';
 import { ContactPage } from './pages/ContactPage';
 import { SpotifySearchPage } from './pages/SpotifySearchPage';
+import { DownloadsHubPage } from './pages/DownloadsHubPage';
 import { AuthPage } from './pages/AuthPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -74,6 +75,8 @@ function App() {
         <Route path="apis" element={<APIsPage />} />
         <Route path="pricing" element={<PricingPage />} />
         <Route path="contact" element={<ContactPage />} />
+        <Route path="downloads" element={<DownloadsHubPage />} />
+        <Route path="downloads/spotify" element={<SpotifySearchPage />} />
         <Route path="spotify-search" element={<SpotifySearchPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
