@@ -151,6 +151,30 @@ export function Layout() {
                 <div className="px-2 pt-2 pb-3 space-y-1">
                   <Link to="/" className="block px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md">Home</Link>
                   <Link to="/features" className="block px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md">Features</Link>
+
+                  {/* Mobile Downloads collapsible */}
+                  <button
+                    onClick={() => setIsMobileDownloadsOpen(!isMobileDownloadsOpen)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      Downloads
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${isMobileDownloadsOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {isMobileDownloadsOpen && (
+                    <div className="ml-6 space-y-1 border-l border-gray-700/50 pl-3">
+                      <Link to="/downloads" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-blue-300 hover:bg-gray-800 rounded-md text-sm">
+                        All services
+                      </Link>
+                      <Link to="/spotify-search" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md text-sm">
+                        <Music2 className="h-4 w-4 text-emerald-400" /> Spotify
+                      </Link>
+                      <div className="px-3 py-2 text-gray-500 text-xs">YouTube · Instagram · Snapchat (قريباً)</div>
+                    </div>
+                  )}
+
                   <Link to="/apis" className="block px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md">APIs</Link>
                   <Link to="/pricing" className="block px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md">Pricing</Link>
                   <Link to="/contact" className="block px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md">Contact</Link>
