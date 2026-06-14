@@ -6,6 +6,8 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 
 export function Layout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDownloadsOpen, setIsDownloadsOpen] = useState(false);
+  const [isMobileDownloadsOpen, setIsMobileDownloadsOpen] = useState(false);
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
 
