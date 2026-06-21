@@ -8,6 +8,7 @@ import {
   Ghost,
   Music,
   Video,
+  Facebook,
   ArrowRight,
   Sparkles,
   Download as DownloadIcon,
@@ -39,6 +40,28 @@ const services: Service[] = [
     badge: 'متاح الآن',
   },
   {
+    id: 'facebook',
+    name: 'Facebook',
+    description: 'حمّل فيديوهات فيسبوك والريلز بجودة عالية وبدون إعلانات.',
+    icon: Facebook,
+    path: '/downloads/facebook',
+    gradient: 'from-blue-500 to-blue-700',
+    glow: 'shadow-blue-500/40',
+    available: true,
+    badge: 'متاح الآن',
+  },
+  {
+    id: 'instagram',
+    name: 'Instagram',
+    description: 'تحميل ريلز وفيديوهات إنستغرام بضغطة واحدة.',
+    icon: Instagram,
+    path: '/downloads/instagram',
+    gradient: 'from-purple-500 via-pink-500 to-orange-500',
+    glow: 'shadow-pink-500/40',
+    available: true,
+    badge: 'متاح الآن',
+  },
+  {
     id: 'youtube',
     name: 'YouTube',
     description: 'تحميل الفيديوهات والمقاطع الصوتية من يوتيوب بجودات متعددة.',
@@ -54,16 +77,6 @@ const services: Service[] = [
     description: 'حمّل فيديوهات تيك توك بدون علامة مائية وبسرعة فائقة.',
     icon: Music,
     gradient: 'from-pink-500 via-fuchsia-500 to-cyan-500',
-    glow: 'shadow-pink-500/40',
-    available: false,
-    badge: 'قريباً',
-  },
-  {
-    id: 'instagram',
-    name: 'Instagram',
-    description: 'تحميل الريلز والصور والقصص من إنستغرام بكل سهولة.',
-    icon: Instagram,
-    gradient: 'from-purple-500 via-pink-500 to-orange-500',
     glow: 'shadow-pink-500/40',
     available: false,
     badge: 'قريباً',
@@ -127,8 +140,8 @@ export function DownloadsHubPage() {
           className="grid grid-cols-3 gap-4 max-w-3xl mx-auto mb-16"
         >
           {[
-            { value: '1+', label: 'خدمة متاحة' },
-            { value: '5+', label: 'خدمة قادمة' },
+            { value: '3+', label: 'خدمات متاحة' },
+            { value: '4+', label: 'خدمات قادمة' },
             { value: '∞', label: 'تحميلات مجانية' },
           ].map((stat, i) => (
             <div
