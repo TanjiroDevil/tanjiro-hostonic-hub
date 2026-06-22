@@ -76,10 +76,11 @@ const services: Service[] = [
     name: 'TikTok',
     description: 'حمّل فيديوهات تيك توك بدون علامة مائية وبسرعة فائقة.',
     icon: Music,
+    path: '/downloads/tiktok',
     gradient: 'from-pink-500 via-fuchsia-500 to-cyan-500',
     glow: 'shadow-pink-500/40',
-    available: false,
-    badge: 'قريباً',
+    available: true,
+    badge: 'متاح الآن',
   },
   {
     id: 'snapchat',
