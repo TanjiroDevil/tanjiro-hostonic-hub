@@ -17,7 +17,7 @@ interface ApiResponse {
 }
 
 export interface VideoDownloaderProps {
-  platform: 'facebook' | 'instagram';
+  platform: 'facebook' | 'instagram' | 'tiktok';
   brandName: string;
   tagline: string;
   description: string;

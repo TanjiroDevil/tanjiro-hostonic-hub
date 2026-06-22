@@ -10,6 +10,7 @@ import { SpotifySearchPage } from './pages/SpotifySearchPage';
 import { DownloadsHubPage } from './pages/DownloadsHubPage';
 import { FacebookDownloadPage } from './pages/FacebookDownloadPage';
 import { InstagramDownloadPage } from './pages/InstagramDownloadPage';
+import { TikTokDownloadPage } from './pages/TikTokDownloadPage';
 import { AuthPage } from './pages/AuthPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -81,9 +82,11 @@ function App() {
         <Route path="downloads/spotify" element={<SpotifySearchPage />} />
         <Route path="downloads/facebook" element={<FacebookDownloadPage />} />
         <Route path="downloads/instagram" element={<InstagramDownloadPage />} />
+        <Route path="downloads/tiktok" element={<TikTokDownloadPage />} />
         <Route path="spotify-search" element={<SpotifySearchPage />} />
         <Route path="facebook-download" element={<FacebookDownloadPage />} />
         <Route path="instagram-download" element={<InstagramDownloadPage />} />
+        <Route path="tiktok-download" element={<TikTokDownloadPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
 

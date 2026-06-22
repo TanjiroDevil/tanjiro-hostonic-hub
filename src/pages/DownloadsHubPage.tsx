@@ -76,10 +76,11 @@ const services: Service[] = [
     name: 'TikTok',
     description: 'حمّل فيديوهات تيك توك بدون علامة مائية وبسرعة فائقة.',
     icon: Music,
+    path: '/downloads/tiktok',
     gradient: 'from-pink-500 via-fuchsia-500 to-cyan-500',
     glow: 'shadow-pink-500/40',
-    available: false,
-    badge: 'قريباً',
+    available: true,
+    badge: 'متاح الآن',
   },
   {
     id: 'snapchat',
@@ -140,8 +141,8 @@ export function DownloadsHubPage() {
           className="grid grid-cols-3 gap-4 max-w-3xl mx-auto mb-16"
         >
           {[
-            { value: '3+', label: 'خدمات متاحة' },
-            { value: '4+', label: 'خدمات قادمة' },
+            { value: '4+', label: 'خدمات متاحة' },
+            { value: '2+', label: 'خدمات قادمة' },
             { value: '∞', label: 'تحميلات مجانية' },
           ].map((stat, i) => (
             <div
