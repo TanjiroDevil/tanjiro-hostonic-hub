@@ -60,6 +60,7 @@ export function Layout() {
                           { name: 'Spotify', desc: 'Search & Download tracks', to: '/spotify-search', icon: Music2, gradient: 'from-emerald-500 to-green-700', hover: 'hover:bg-emerald-500/10' },
                           { name: 'Facebook', desc: 'Download videos & reels', to: '/downloads/facebook', icon: Facebook, gradient: 'from-blue-500 to-blue-700', hover: 'hover:bg-blue-500/10' },
                           { name: 'Instagram', desc: 'Download reels & posts', to: '/downloads/instagram', icon: Instagram, gradient: 'from-purple-500 via-pink-500 to-orange-500', hover: 'hover:bg-pink-500/10' },
+                          { name: 'TikTok', desc: 'Download videos no watermark', to: '/downloads/tiktok', icon: Music, gradient: 'from-pink-500 via-fuchsia-500 to-cyan-500', hover: 'hover:bg-pink-500/10' },
                         ].map((s) => (
                           <Link
                             key={s.name}
@@ -80,7 +81,6 @@ export function Layout() {
 
                         {[
                           { name: 'YouTube', icon: Youtube, gradient: 'from-red-500 to-rose-700' },
-                          { name: 'TikTok', icon: Music2, gradient: 'from-pink-500 via-fuchsia-500 to-cyan-500' },
                           { name: 'Snapchat', icon: Ghost, gradient: 'from-yellow-400 to-amber-500' },
                         ].map((s) => (
                           <div
@@ -184,7 +184,10 @@ export function Layout() {
                       <Link to="/downloads/instagram" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md text-sm">
                         <Instagram className="h-4 w-4 text-pink-400" /> Instagram
                       </Link>
-                      <div className="px-3 py-2 text-gray-500 text-xs">YouTube · TikTok · Snapchat (قريباً)</div>
+                      <Link to="/downloads/tiktok" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md text-sm">
+                        <Music className="h-4 w-4 text-cyan-400" /> TikTok
+                      </Link>
+                      <div className="px-3 py-2 text-gray-500 text-xs">YouTube · Snapchat (قريباً)</div>
                     </div>
                   )}
 
