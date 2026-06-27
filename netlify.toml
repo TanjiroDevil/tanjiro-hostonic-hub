@@ -1,17 +1,18 @@
-# إعدادات البناء
 [build]
   command = "npm run build"
   publish = "dist"
 
 [functions]
   directory = "api"
+  included_files = ["plugins/**"]
 
+# كل طلبات /api/* تذهب لدالة واحدة (dispatcher) لتجاوز حد Vercel/Netlify
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  to = "/.netlify/functions/[...slug]"
   status = 200
 
-# توجيه باقي الروابط لـ React Router (لحل مشكلة 404 عند عمل Refresh)
+# SPA fallback لـ React Router
 [[redirects]]
   from = "/*"
   to = "/index.html"
