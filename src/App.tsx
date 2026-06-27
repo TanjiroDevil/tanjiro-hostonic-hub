@@ -14,6 +14,7 @@ import { TikTokDownloadPage } from './pages/TikTokDownloadPage';
 import { AuthPage } from './pages/AuthPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { DocsPage } from './pages/DocsPage';
 import { AdminLayout } from './components/AdminLayout';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminUsers } from './pages/admin/AdminUsers';
@@ -76,6 +77,7 @@ function App() {
         <Route index element={<HomePage />} />
         <Route path="features" element={<FeaturesPage />} />
         <Route path="apis" element={<APIsPage />} />
+        <Route path="docs" element={<DocsPage />} />
         <Route path="pricing" element={<PricingPage />} />
         <Route path="contact" element={<ContactPage />} />
         <Route path="downloads" element={<DownloadsHubPage />} />
