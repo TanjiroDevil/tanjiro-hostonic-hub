@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full glow-effect" style="filter: drop-shadow(0 0 12px #22d3ee50)">
+  <defs>
+    <linearGradient id="hostGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#22d3ee" />
+    </linearGradient>
+    <linearGradient id="dotGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Server Unit 1 (Top) -->
+  <rect x="15" y="18" width="70" height="26" rx="8" fill="none" stroke="url(#hostGrad)" stroke-width="5" />
+  <circle cx="30" cy="31" r="4.5" fill="url(#dotGrad)" />
+  <path d="M44 31 H70" stroke="url(#hostGrad)" stroke-width="3.3333333333333335" stroke-linecap="round" opacity="0.4" />
+  
+  <!-- Sleek Connector Pipes -->
+  <path d="M25 44 V56" stroke="#2563eb" stroke-width="2.7777777777777777" stroke-linecap="round" opacity="0.7" />
+  <path d="M75 44 V56" stroke="#22d3ee" stroke-width="2.7777777777777777" stroke-linecap="round" opacity="0.7" />
+
+  <!-- Server Unit 2 (Bottom) -->
+  <rect x="15" y="56" width="70" height="26" rx="8" fill="none" stroke="url(#hostGrad)" stroke-width="5" />
+  <circle cx="30" cy="69" r="4.5" fill="url(#dotGrad)" />
+  <path d="M44 69 H70" stroke="url(#hostGrad)" stroke-width="3.3333333333333335" stroke-linecap="round" opacity="0.4" />
+</svg>
