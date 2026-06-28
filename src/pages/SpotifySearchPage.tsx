@@ -54,7 +54,7 @@ export function SpotifySearchPage() {
     setIsPreparing(true);
     const loadingToast = toast.loading('جاري تحضير ملف الصوت...');
     try {
-      const res = await fetch(`https://tanjirodev.online/api/spotify-download?url=${encodeURIComponent(track.url)}`);
+      const res = await fetch(`https://tanjirodev.online/api/spotify?url=${encodeURIComponent(track.url)}`);
       if (!res.ok) throw new Error('fail');
       const data = await res.json();
       if (data.status !== 'success' || !data.download_url) throw new Error('fail');
@@ -114,7 +114,7 @@ export function SpotifySearchPage() {
       });
       if (artist.trim()) params.append('artist', artist.trim());
 
-      const res = await fetch(`https://tanjirodev.online/api/spot?${params.toString()}`);
+      const res = await fetch(`https://tanjirodev.online/api/spotify?${params.toString()}`);
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const data: SpotifyResponse = await res.json();
 
