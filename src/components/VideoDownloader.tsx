@@ -66,7 +66,7 @@ export function VideoDownloader({
 
     try {
       const res = await fetch(
-        `https://tanjirodev.online/api/down-snap?url=${encodeURIComponent(url.trim())}`,
+        `https://tanjirodev.online/api/download/snap?url=${encodeURIComponent(url.trim())}`,
       );
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const data: ApiResponse = await res.json();
