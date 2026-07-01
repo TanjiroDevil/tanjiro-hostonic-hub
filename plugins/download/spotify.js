@@ -1,196 +1,156 @@
-import axios from "axios";
-import crypto from "crypto";
+// Spotify → SaveTube MP3 download engine (CommonJS for dispatcher)
+const axios = require("axios");
+const crypto = require("crypto");
 
 class SaveTubeEngine {
   constructor() {
-    this.ky = 'C5D58EF67A7584E4A29F6C35BBC4EB12';
-    this.m = /^((?:https?:)?\/\/)?((?:www|m|music)\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(?:embed\/)?(?:v\/)?(?:shorts\/)?([a-zA-Z0-9_-]{11})/;
+    this.ky = "C5D58EF67A7584E4A29F6C35BBC4EB12";
+    this.m =
+      /^((?:https?:)?\/\/)?((?:www|m|music)\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(?:embed\/)?(?:v\/)?(?:shorts\/)?([a-zA-Z0-9_-]{11})/;
     this.is = axios.create({
       headers: {
-        'content-type': 'application/json',
-        'origin': 'https://yt.savetube.me',
-        'user-agent': 'Mozilla/5.0 (Android 15; Mobile)'
-      }
+        "content-type": "application/json",
+        origin: "https://yt.savetube.me",
+        "user-agent": "Mozilla/5.0 (Android 15; Mobile)",
+      },
+      timeout: 20000,
     });
   }
 
   async decrypt(enc) {
-    const buf = Buffer.from(enc, 'base64');
-    const key = Buffer.from(this.ky, 'hex');
+    const buf = Buffer.from(enc, "base64");
+    const key = Buffer.from(this.ky, "hex");
     const iv = buf.slice(0, 16);
     const data = buf.slice(16);
-
-    const decipher = crypto.createDecipheriv('aes-128-cbc', key, iv);
+    const decipher = crypto.createDecipheriv("aes-128-cbc", key, iv);
     const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
     return JSON.parse(decrypted.toString());
   }
 
   async getCdn() {
     const res = await this.is.get("https://media.savetube.vip/api/random-cdn");
-    return { status: true, data: res.data.cdn };
+    return res.data.cdn;
   }
 
   async getDownloadUrl(youtubeUrl) {
     const id = youtubeUrl.match(this.m)?.[3];
     if (!id) throw new Error("رابط يوتيوب غير صالح");
-
     const cdn = await this.getCdn();
-    const info = await this.is.post(`https://${cdn.data}/v2/info`, {
-      url: `https://www.youtube.com/watch?v=${id}`
+    const info = await this.is.post(`https://${cdn}/v2/info`, {
+      url: `https://www.youtube.com/watch?v=${id}`,
     });
-
     const dec = await this.decrypt(info.data.data);
-
-    const dl = await this.is.post(`https://${cdn.data}/download`, {
+    const dl = await this.is.post(`https://${cdn}/download`, {
       id,
-      downloadType: 'audio',
-      quality: '128',
-      key: dec.key
+      downloadType: "audio",
+      quality: "128",
+      key: dec.key,
     });
-
     return dl.data.data.downloadUrl;
   }
 }
 
-export default async function handler(req, res) {
-    // --- قراءة المعاملات بدقة شديدة للمنصتين ---
-    let queryParams = req.query || {};
-    if (req.url && Object.keys(queryParams).length === 0) {
-        try {
-            const urlObj = new URL(req.url, `http://${req.headers?.host || 'localhost'}`);
-            queryParams = Object.fromEntries(urlObj.searchParams.entries());
-        } catch (e) {}
-    }
+module.exports = {
+  description: "تحميل أغنية Spotify كـ MP3 عبر محرك SaveTube.",
+  method: "GET",
+  parameters: [
+    { name: "url", required: true, description: "رابط أو ID أغنية Spotify." },
+    { name: "proxy", required: false, description: "true لبثّ الملف مباشرة." },
+    { name: "mp3url", required: false, description: "رابط MP3 للبث (مع proxy=true)." },
+    { name: "name", required: false, description: "اسم الملف عند البث." },
+  ],
+  handler: async (req, res) => {
+    const q = req.query || {};
 
-    let body = req.body || {};
-    if (typeof body === 'string') {
-        try { body = JSON.parse(body); } catch (e) {}
-    }
-
-    const commonHeaders = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'X-Powered-By': 'Tanjiro-Engine'
-    };
-
-    // 1) كشف وتمرير الـ Proxy Stream فوراً في بداية الـ Handler قبل أي شروط أخرى
-    const isProxy = queryParams.proxy === 'true' || req.url?.includes('proxy=true');
-    const targetMp3Url = queryParams.mp3url;
-
-    if (isProxy && targetMp3Url) {
-        try {
-            const mp3Response = await axios({
-                method: 'get',
-                url: decodeURIComponent(targetMp3Url),
-                responseType: 'stream',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-                }
-            });
-            
-            if (res && typeof res.status === 'function') {
-                const downloadName = queryParams.name ? `${decodeURIComponent(queryParams.name)}.mp3` : 'track.mp3';
-                
-                // الرؤوس الإجبارية لتحويل المتصفح من قراءة نص إلى تحميل ملف ثنائي باينري غصباً عنه
-                res.setHeader('Content-Type', 'audio/mpeg');
-                res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(downloadName)}"`);
-                Object.entries(commonHeaders).forEach(([k, v]) => res.setHeader(k, v));
-                
-                return mp3Response.data.pipe(res);
-            }
-        } catch (e) {
-            console.error("Stream Proxy Error:", e.message);
-            // لو فشل البث لا نرجع الصفحة الترحيبية، بل نرسل خطأ واضح
-            if (res && typeof res.status === 'function') {
-                return res.status(500).json({ status: "error", message: "فشل بث ملف الصوت السحابي المباشر." });
-            }
-        }
-    }
-
-    // دالة الرد العادية للـ JSON
-    const sendResponse = (statusCode, payload) => {
-        const bodyString = JSON.stringify(payload, null, 4);
-        if (res && typeof res.status === 'function') {
-            Object.entries(commonHeaders).forEach(([k, v]) => res.setHeader(k, v));
-            res.setHeader('Content-Type', 'application/json; charset=utf-8');
-            return res.status(statusCode).send(bodyString);
-        }
-        return new Response(bodyString, { 
-            status: statusCode, 
-            headers: { ...commonHeaders, 'Content-Type': 'application/json; charset=utf-8' } 
+    // Proxy stream: pipe MP3 as an attachment to force download
+    if ((q.proxy === "true" || q.proxy === true) && q.mp3url) {
+      try {
+        const upstream = await axios({
+          method: "get",
+          url: decodeURIComponent(q.mp3url),
+          responseType: "stream",
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
         });
-    };
-
-    if (req.method === 'OPTIONS') {
-        if (res && typeof res.status === 'function') return res.status(200).end();
-        return new Response(null, { status: 200, headers: commonHeaders });
+        const name = q.name ? `${decodeURIComponent(q.name)}.mp3` : "track.mp3";
+        res.setHeader("Content-Type", "audio/mpeg");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${encodeURIComponent(name)}"`
+        );
+        return upstream.data.pipe(res);
+      } catch (e) {
+        return res
+          .status(500)
+          .json({ status: "error", message: "فشل بثّ ملف الصوت.", detail: e.message });
+      }
     }
 
-    let trackUrl = queryParams.url || body.url || queryParams.id || body.id;
-
-    if (!trackUrl || trackUrl.trim().length === 0) {
-        return sendResponse(200, { 
-            title: "Spotify SaveTube Stream Engine", 
-            status: "Online ✅", 
-            dev: "Tanjiro ✨" 
-        });
+    const trackUrl = q.url || q.id;
+    if (!trackUrl || !String(trackUrl).trim()) {
+      return res.status(200).json({
+        title: "Spotify SaveTube Stream Engine",
+        status: "Online ✅",
+        usage: "/api/download/spotify?url=SPOTIFY_TRACK_URL_OR_ID",
+      });
     }
 
     try {
-        let targetUrl = trackUrl.trim();
-        if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
-            targetUrl = `https://open.spotify.com/track/${targetUrl}`;
-        }
+      let target = String(trackUrl).trim();
+      if (!/^https?:\/\//i.test(target)) {
+        target = `https://open.spotify.com/track/${target}`;
+      }
 
-        const spotifyRes = await axios.get(targetUrl, { timeout: 15000 });
-        const htmlText = spotifyRes.data;
+      const html = (await axios.get(target, { timeout: 15000 })).data;
+      const titleMatch = html.match(/(?<=:title" content=")(.*?)(?=")/gm);
+      const authorMatch = html.match(/(?<=:description" content=")(.*?)(?= · )/gm);
+      const coverMatch = html.match(/(?<=:image" content=")(.*?)(?=")/gm);
+      if (!titleMatch || !authorMatch) {
+        return res
+          .status(400)
+          .json({ status: "error", message: "فشل استخراج بيانات الأغنية." });
+      }
+      const title = titleMatch[0];
+      const artist = authorMatch[0];
+      const cover = coverMatch ? coverMatch[0] : "";
 
-        const titleMatch = htmlText.match(/(?<=:title" content=")(.*?)(?=")/gm);
-        const authorMatch = htmlText.match(/(?<=:description" content=")(.*?)(?= · )/gm);
-        const coverMatch = htmlText.match(/(?<=:image" content=")(.*?)(?=")/gm);
+      const searchQuery = encodeURIComponent(`${title} ${artist} audio`);
+      const ddg = await axios.get(
+        `https://html.duckduckgo.com/html/?q=${searchQuery}+site%3Ayoutube.com`,
+        { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }, timeout: 15000 }
+      );
+      const ytMatch = ddg.data.match(/watch\?v=[a-zA-Z0-9_-]{11}/);
+      if (!ytMatch) {
+        return res
+          .status(404)
+          .json({ status: "error", message: "الأغنية غير متاحة حالياً للتحميل السريع." });
+      }
+      const youtubeVideoUrl = `https://www.youtube.com/${ytMatch[0]}`;
 
-        if (!titleMatch || !authorMatch) {
-            return sendResponse(400, { status: "error", message: "فشل استخراج بيانات الأغنية." });
-        }
+      const st = new SaveTubeEngine();
+      const rawMp3Url = await st.getDownloadUrl(youtubeVideoUrl);
+      if (!rawMp3Url) throw new Error("فشل توليد الرابط المباشر.");
 
-        const title = titleMatch[0];
-        const artist = authorMatch[0];
-        const cover = coverMatch ? coverMatch[0] : "";
+      const host = req.headers?.host || "localhost";
+      const proto =
+        (req.headers && (req.headers["x-forwarded-proto"] || "")) ||
+        (host.startsWith("localhost") ? "http" : "https");
+      const proxyDownloadUrl = `${proto}://${host}/api/download/spotify?proxy=true&name=${encodeURIComponent(
+        title
+      )}&mp3url=${encodeURIComponent(rawMp3Url)}`;
 
-        const searchQuery = encodeURIComponent(`${title} ${artist} audio`);
-        const ytSearchRes = await axios.get(`https://html.duckduckgo.com/html/?q=${searchQuery}+site%3Ayoutube.com`, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-        });
-        
-        const ytHtml = ytSearchRes.data;
-        const ytUrlMatch = ytHtml.match(/watch\?v=[a-zA-Z0-9_-]{11}/);
-
-        if (!ytUrlMatch) {
-            return sendResponse(404, { status: "error", message: "الأغنية غير متاحة حالياً للتحميل السريع." });
-        }
-
-        const youtubeVideoUrl = `https://www.youtube.com/${ytUrlMatch[0]}`;
-
-        const st = new SaveTubeEngine();
-        const rawMp3Url = await st.getDownloadUrl(youtubeVideoUrl);
-
-        if (!rawMp3Url) throw new Error("فشل توليد الرابط المباشر من خوادم التشفير.");
-
-        // توليد رابط الـ Proxy الموثق
-        const host = req.headers?.host || 'tanjirodev.online';
-        const proxyDownloadUrl = `https://${host}/api/spotify-download?proxy=true&name=${encodeURIComponent(title)}&mp3url=${encodeURIComponent(rawMp3Url)}`;
-
-        return sendResponse(200, {
-            status: "success",
-            title: title,
-            artist: artist,
-            image: cover,
-            youtube_source: youtubeVideoUrl,
-            download_url: proxyDownloadUrl, 
-            dev: "Tanjiro ✨"
-        });
-
+      return res.status(200).json({
+        status: "success",
+        title,
+        artist,
+        image: cover,
+        youtube_source: youtubeVideoUrl,
+        download_url: proxyDownloadUrl,
+        dev: "Tanjiro ✨",
+      });
     } catch (error) {
-        return sendResponse(500, { status: "error", message: error.message || error });
+      return res
+        .status(500)
+        .json({ status: "error", message: error.message || String(error) });
     }
-}
+  },
+};
