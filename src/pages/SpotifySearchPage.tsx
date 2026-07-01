@@ -27,15 +27,6 @@ function formatDuration(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-function getDirectAudioUrl(downloadUrl: string): string {
-  try {
-    const parsedUrl = new URL(downloadUrl);
-    return parsedUrl.searchParams.get('mp3url') || downloadUrl;
-  } catch {
-    return downloadUrl;
-  }
-}
-
 export function SpotifySearchPage() {
   const [query, setQuery] = useState('');
   const [artist, setArtist] = useState('');
@@ -54,7 +45,7 @@ export function SpotifySearchPage() {
     setIsPreparing(true);
     const loadingToast = toast.loading('جاري تحضير ملف الصوت...');
     try {
-      const res = await fetch(`https://tanjirodev.online/api/download/spotify?url=${encodeURIComponent(track.url)}`);
+      const res = await fetch(`/api/download/spotify?url=${encodeURIComponent(track.url)}`);
       if (!res.ok) throw new Error('fail');
       const data = await res.json();
       if (data.status !== 'success' || !data.download_url) throw new Error('fail');
@@ -63,21 +54,22 @@ export function SpotifySearchPage() {
         .replace(/[\\/:*?"<>|]+/g, '')
         .trim();
 
-      const directAudioUrl = getDirectAudioUrl(data.download_url);
-      if (!directAudioUrl || directAudioUrl === data.download_url && data.download_url.includes('proxy=true')) {
-        throw new Error('missing audio url');
-      }
+      // Fetch as blob for instant/silent download (no browser navigation)
+      const audioRes = await fetch(data.download_url);
+      if (!audioRes.ok) throw new Error('audio fetch fail');
+      const blob = await audioRes.blob();
+      const blobUrl = URL.createObjectURL(blob);
 
       const a = document.createElement('a');
-      a.href = directAudioUrl;
+      a.href = blobUrl;
       a.download = `${safeName}.mp3`;
-      a.rel = 'noopener noreferrer';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
 
       toast.dismiss(loadingToast);
-      toast.success('جاري التحميل...');
+      toast.success('تم التحميل بنجاح ✅');
       setDownloading((p) => ({ ...p, [track.id]: 'done' }));
       setTimeout(() => {
         setDownloading((p) => {
