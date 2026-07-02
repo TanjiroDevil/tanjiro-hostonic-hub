@@ -106,7 +106,7 @@ export function SpotifySearchPage() {
       });
       if (artist.trim()) params.append('artist', artist.trim());
 
-      const res = await fetch(`https://tanjirodev.online/api/search/spot?${params.toString()}`);
+      const res = await fetch(`/api/search/spot?${params.toString()}`);
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const data: SpotifyResponse = await res.json();
 

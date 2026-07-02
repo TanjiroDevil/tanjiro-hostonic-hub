@@ -1,29 +1,49 @@
-// Spotify track search using anonymous token from open.spotify.com
+// Spotify track search (no token) — DuckDuckGo → open.spotify.com/track/{id} → OG metadata
 const axios = require("axios");
 
-let cachedToken = null;
-let tokenExpiresAt = 0;
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
 
-async function getAnonToken() {
-  if (cachedToken && Date.now() < tokenExpiresAt - 60_000) return cachedToken;
-  const r = await axios.get(
-    "https://open.spotify.com/get_access_token?reason=transport&productType=web_player",
-    {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-        Accept: "application/json",
-      },
-      timeout: 15000,
+function pick(re, html) {
+  const m = html.match(re);
+  return m ? m[1] : "";
+}
+
+async function fetchTrack(id) {
+  try {
+    const { data: html } = await axios.get(
+      `https://open.spotify.com/embed/track/${id}`,
+      {
+        headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
+        timeout: 15000,
+      }
+    );
+    // Embed page contains an inline JSON blob with track metadata.
+    const nameMatch = html.match(/"name":"([^"]+)","uri":"spotify:track:/);
+    const artistsMatch = html.match(/"artists":\[([^\]]+)\]/);
+    const durationMatch = html.match(/"duration":(\d+)/);
+    const coverMatch = html.match(/"url":"(https:\/\/(?:i\.scdn\.co|image-cdn[^"/]*\.spotifycdn\.com)\/image\/[^"]+)"/);
+    if (!nameMatch) return null;
+    const artistNames = [];
+    if (artistsMatch) {
+      const re = /"name":"([^"]+)"/g;
+      let m;
+      while ((m = re.exec(artistsMatch[1])) !== null) artistNames.push(m[1]);
     }
-  );
-  cachedToken = r.data.accessToken;
-  tokenExpiresAt = r.data.accessTokenExpirationTimestampMs || Date.now() + 30 * 60_000;
-  return cachedToken;
+    return {
+      id,
+      name: nameMatch[1],
+      artist: artistNames.join(", "),
+      url: `https://open.spotify.com/track/${id}`,
+      image: coverMatch ? coverMatch[1] : "",
+      duration_ms: durationMatch ? parseInt(durationMatch[1], 10) : 0,
+    };
+  } catch {
+    return null;
+  }
 }
 
 module.exports = {
-  description: "Spotify tracks search (name/artist).",
+  description: "Spotify tracks search (name/artist) via public search — no API keys.",
   method: "GET",
   parameters: [
     { name: "q", required: true, description: "كلمة البحث (اسم الأغنية)." },
@@ -42,26 +62,42 @@ module.exports = {
       });
     }
     try {
-      const token = await getAnonToken();
-      let query = q.trim();
-      if (artist && artist.trim()) query += ` artist:${artist.trim()}`;
-      const r = await axios.get("https://api.spotify.com/v1/search", {
-        params: { q: query, type: "track", limit },
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 15000,
+      const query = `${q.trim()}${artist && artist.trim() ? " " + artist.trim() : ""}`;
+      const searchUrl = `https://search.yahoo.com/search?p=${encodeURIComponent(
+        query + " site:open.spotify.com/track"
+      )}&n=${Math.min(limit * 3, 50)}`;
+      const { data: sHtml } = await axios.get(searchUrl, {
+        headers: {
+          "User-Agent": UA,
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        timeout: 20000,
+        maxRedirects: 5,
       });
-      const items = r.data?.tracks?.items || [];
-      const tracks = items.map((t) => ({
-        id: t.id,
-        name: t.name,
-        artist: (t.artists || []).map((a) => a.name).join(", "),
-        url: t.external_urls?.spotify || `https://open.spotify.com/track/${t.id}`,
-        image: t.album?.images?.[0]?.url || "",
-        duration_ms: t.duration_ms || 0,
-      }));
+      const ids = [];
+      const seen = new Set();
+      const re = /open\.spotify\.com(?:%2[fF]|\/)track(?:%2[fF]|\/)([a-zA-Z0-9]{22})/g;
+      let m;
+      while ((m = re.exec(sHtml)) !== null) {
+        if (!seen.has(m[1])) {
+          seen.add(m[1]);
+          ids.push(m[1]);
+          if (ids.length >= limit) break;
+        }
+      }
+      if (ids.length === 0) {
+        return res.status(200).json({
+          status: "success",
+          total_results: 0,
+          tracks: [],
+          dev: "Tanjiro ✨",
+        });
+      }
+      const tracks = (await Promise.all(ids.map(fetchTrack))).filter(Boolean);
       return res.status(200).json({
         status: "success",
-        total_results: r.data?.tracks?.total || tracks.length,
+        total_results: tracks.length,
         tracks,
         dev: "Tanjiro ✨",
       });
