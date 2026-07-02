@@ -55,9 +55,9 @@ module.exports = {
     }
     try {
       const query = `${q.trim()}${artist && artist.trim() ? " " + artist.trim() : ""}`;
-      const searchUrl = `https://search.brave.com/search?q=${encodeURIComponent(
+      const searchUrl = `https://search.yahoo.com/search?p=${encodeURIComponent(
         query + " site:open.spotify.com/track"
-      )}&source=web`;
+      )}&n=${Math.min(limit * 3, 50)}`;
       const { data: sHtml } = await axios.get(searchUrl, {
         headers: {
           "User-Agent": UA,
@@ -69,7 +69,7 @@ module.exports = {
       });
       const ids = [];
       const seen = new Set();
-      const re = /open\.spotify\.com\/track\/([a-zA-Z0-9]{22})/g;
+      const re = /open\.spotify\.com(?:%2[fF]|\/)track(?:%2[fF]|\/)([a-zA-Z0-9]{22})/g;
       let m;
       while ((m = re.exec(sHtml)) !== null) {
         if (!seen.has(m[1])) {
