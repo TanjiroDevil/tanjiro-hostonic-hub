@@ -71,7 +71,7 @@ module.exports = {
       const seen = new Set();
       const re = /open\.spotify\.com\/track\/([a-zA-Z0-9]{22})/g;
       let m;
-      while ((m = re.exec(ddgHtml)) !== null) {
+      while ((m = re.exec(sHtml)) !== null) {
         if (!seen.has(m[1])) {
           seen.add(m[1]);
           ids.push(m[1]);
