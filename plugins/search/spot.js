@@ -21,7 +21,7 @@ async function fetchTrack(id) {
     const nameMatch = html.match(/"name":"([^"]+)","uri":"spotify:track:/);
     const artistsMatch = html.match(/"artists":\[([^\]]+)\]/);
     const durationMatch = html.match(/"duration":(\d+)/);
-    const coverMatch = html.match(/"url":"(https:\/\/i\.scdn\.co\/image\/[^"]+)"/);
+    const coverMatch = html.match(/"url":"(https:\/\/(?:i\.scdn\.co|image-cdn[^"/]*\.spotifycdn\.com)\/image\/[^"]+)"/);
     if (!nameMatch) return null;
     const artistNames = [];
     if (artistsMatch) {
