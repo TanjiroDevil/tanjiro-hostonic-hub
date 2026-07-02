@@ -2,10 +2,7 @@ const axios = require("axios");
 
 class GeminiAPI {
   constructor() {
-    // تحديث الرابط الجديد للسكراب بناءً على طلب الـ Request الحديث
     this.baseUrl = "https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?bl=boq_assistant-bard-web-server_20260630.21_p0&f.sid=-680358786181734346&hl=ar&_reqid=5485115&rt=c";
-    
-    // تحديث الـ headers والـ Cookie والـ User-Agent بشكل مطابق تماماً للبيانات الجديدة
     this.headers = {
       "accept": "*/*",
       "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
@@ -21,143 +18,32 @@ class GeminiAPI {
     };
   }
 
-  async getData(imageUrl) {
-    try {
-      const response = await axios.get(imageUrl.trim(), { 
-          responseType: "arraybuffer",
-          timeout: 25000 
-      });
-      return {
-        inline_data: {
-          mime_type: response.headers["content-type"] || "image/jpeg",
-          data: Buffer.from(response.data, "binary").toString("base64"),
-        },
-      };
-    } catch (e) {
-      return null;
-    }
-  }
-
-  async chat({ prompt, imageUrl = null }) {
-    const textPrompt = prompt; 
-    
-    const fReq = [
-      null,
-      `[["${textPrompt}",0,null,null,null,null,0],["ar"],["","","","","","",null,null,null,""],"a7bc880d6879feb592edda0804560d4d",null,[1],1,null,null,1,0,null,null,null,null,null,[[0]],0,null,null,null,null,null,null,null,null,1,null,null,[4],null,null,null,null,null,null,null,null,null,null,[1],null,null,null,null,null,null,null,null,null,null,null,0,null,null,null,null,null,"5A19C9BC-3532-4CEE-A6FA-446D8E2F7AB1",null,[1],null,null,null,null,null,null,2,null,null,null,null,null,null,null,null,null,null,1,1,null,null,null,null,null,null,null,null,null,null,0]`
-    ];
-
+  async chat({ prompt }) {
+    const fReq = [null, `[["${prompt}",0,null,null,null,null,0],["ar"],["","","","","","",null,null,null,""],"a7bc880d6879feb592edda0804560d4d",null,[1],1,null,null,1,0,null,null,null,null,null,[[0]],0,null,null,null,null,null,null,null,null,1,null,null,[4],null,null,null,null,null,null,null,null,null,null,[1],null,null,null,null,null,null,null,null,null,null,null,0,null,null,null,null,null,"5A19C9BC-3532-4CEE-A6FA-446D8E2F7AB1",null,[1],null,null,null,null,null,null,2,null,null,null,null,null,null,null,null,null,null,1,1,null,null,null,null,null,null,null,null,null,null,0]`];
     const body = new URLSearchParams();
     body.append("f.req", JSON.stringify(fReq));
     body.append("at", "AD1_LW4RuU2PkoEbdLlABQkoIVJd:1783024689512");
 
-    try {
-      const response = await axios.post(this.baseUrl, body, { 
-        headers: this.headers,
-        timeout: 30000 
-      });
-
-      const rawData = response.data;
-      const match = rawData.match(/\["rc_.*?",\["(.*?)"\]/);
-      if (match && match[1]) {
-         return match[1].replace(/\\n/g, '\n');
-      }
-      
-      return rawData;
-    } catch (error) {
-      throw new Error(error.message);
-    }
+    const response = await axios.post(this.baseUrl, body, { headers: this.headers, timeout: 30000 });
+    const match = response.data.match(/\["rc_.*?",\["(.*?)"\]/);
+    return match && match[1] ? match[1].replace(/\\n/g, '\n') : "Error: Could not parse response.";
   }
 }
 
-async function handler(req, res) {
-    let body = {};
-    try {
-        if (req.body) {
-            body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-        }
-    } catch (e) { body = {}; }
-
-    let prompt, imageUrl;
-    
-    if (req.query && (req.query.prompt || req.query.imageUrl)) {
-        prompt = req.query.prompt;
-        imageUrl = req.query.imageUrl;
-    } else {
-        try {
-            const fullUrl = req.url.startsWith('http') ? req.url : `http://localhost${req.url}`;
-            const urlObj = new URL(fullUrl);
-            prompt = urlObj.searchParams.get('prompt');
-            imageUrl = urlObj.searchParams.get('imageUrl');
-        } catch (e) {
-            prompt = null;
-            imageUrl = null;
-        }
-    }
-
-    prompt = prompt || body.prompt;
-    imageUrl = imageUrl || body.imageUrl;
-
-    const commonHeaders = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Content-Type': 'application/json; charset=utf-8',
-        'X-Powered-By': 'Tanjiro-Engine'
-    };
-
-    const sendResponse = (statusCode, payload) => {
-        const bodyString = JSON.stringify(payload, null, 4);
-
-        if (res && typeof res.status === 'function') {
-            Object.entries(commonHeaders).forEach(([k, v]) => res.setHeader(k, v));
-            return res.status(statusCode).send(bodyString);
-        }
-
-        return new Response(bodyString, {
-            status: statusCode,
-            headers: commonHeaders
-        });
-    };
-
-    if (req.method === 'OPTIONS') {
-        return sendResponse(200, { message: "ok" });
-    }
-
+module.exports = {
+  description: "Gemini AI Chat",
+  method: "GET",
+  parameters: [{ name: "prompt", required: true, description: "النص المطلوب." }],
+  handler: async (req, res) => {
+    const prompt = req.query.prompt;
     if (!prompt) {
-        return sendResponse(200, {
-            api: "Gemini AI Chat",
-            status: "Online 🙂✨",
-            dev: "Tanjiro ✨",
-            usage: {
-                example: "?prompt=مرحبا",
-                query: ["prompt", "imageUrl"]
-            }
-        });
+      return res.status(200).json({ status: "active", usage: "/api/ai/gemini?prompt=مرحبا" });
     }
-
     try {
-        if (imageUrl && typeof imageUrl === "string" && imageUrl.includes(',')) {
-            imageUrl = imageUrl.split(',');
-        }
-
-        const gemini = new GeminiAPI();
-        const output = await gemini.chat({ prompt, imageUrl });
-
-        if (!output) throw new Error("لم يتم الحصول على استجابة من Gemini");
-
-        return sendResponse(200, {
-            status: "success",
-            response: output,
-            dev: "Tanjiro ✨"
-        });
-
-    } catch (error) {
-        const isImageError = imageUrl ? " (قد يكون السبب عدم دعم الصور في البروكسي)" : "";
-        return sendResponse(500, {
-            status: "error",
-            message: error.message + isImageError
-        });
+      const answer = await new GeminiAPI().chat({ prompt });
+      return res.status(200).json({ status: true, response: answer });
+    } catch (e) {
+      return res.status(500).json({ status: false, error: "GEMINI_ERROR", message: e.message });
     }
-}
-
-module.exports = handler;
-      
+  },
+};
