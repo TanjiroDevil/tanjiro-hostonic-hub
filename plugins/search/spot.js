@@ -10,24 +10,32 @@ function pick(re, html) {
 
 async function fetchTrack(id) {
   try {
-    const { data: html } = await axios.get(`https://open.spotify.com/track/${id}`, {
-      headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
-      timeout: 15000,
-    });
-    const title = pick(/<meta property="og:title" content="([^"]+)"/, html);
-    const desc = pick(/<meta property="og:description" content="([^"]+)"/, html);
-    const image = pick(/<meta property="og:image" content="([^"]+)"/, html);
-    const durationISO = pick(/<meta property="music:duration" content="([^"]+)"/, html);
-    const artist = desc ? desc.split(" · ")[0] : "";
-    const duration_ms = durationISO ? parseInt(durationISO, 10) * 1000 : 0;
-    if (!title) return null;
+    const { data: html } = await axios.get(
+      `https://open.spotify.com/embed/track/${id}`,
+      {
+        headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
+        timeout: 15000,
+      }
+    );
+    // Embed page contains an inline JSON blob with track metadata.
+    const nameMatch = html.match(/"name":"([^"]+)","uri":"spotify:track:/);
+    const artistsMatch = html.match(/"artists":\[([^\]]+)\]/);
+    const durationMatch = html.match(/"duration":(\d+)/);
+    const coverMatch = html.match(/"url":"(https:\/\/i\.scdn\.co\/image\/[^"]+)"/);
+    if (!nameMatch) return null;
+    const artistNames = [];
+    if (artistsMatch) {
+      const re = /"name":"([^"]+)"/g;
+      let m;
+      while ((m = re.exec(artistsMatch[1])) !== null) artistNames.push(m[1]);
+    }
     return {
       id,
-      name: title,
-      artist,
+      name: nameMatch[1],
+      artist: artistNames.join(", "),
       url: `https://open.spotify.com/track/${id}`,
-      image,
-      duration_ms,
+      image: coverMatch ? coverMatch[1] : "",
+      duration_ms: durationMatch ? parseInt(durationMatch[1], 10) : 0,
     };
   } catch {
     return null;
