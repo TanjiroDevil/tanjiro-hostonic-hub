@@ -91,7 +91,6 @@ module.exports = {
           status: "success",
           total_results: 0,
           tracks: [],
-          debug: { htmlLen: sHtml.length, sample: sHtml.slice(0, 200) },
           dev: "Tanjiro ✨",
         });
       }
