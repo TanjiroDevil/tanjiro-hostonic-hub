@@ -55,12 +55,17 @@ module.exports = {
     }
     try {
       const query = `${q.trim()}${artist && artist.trim() ? " " + artist.trim() : ""}`;
-      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(
+      const searchUrl = `https://search.brave.com/search?q=${encodeURIComponent(
         query + " site:open.spotify.com/track"
-      )}`;
-      const { data: ddgHtml } = await axios.get(searchUrl, {
-        headers: { "User-Agent": UA },
-        timeout: 15000,
+      )}&source=web`;
+      const { data: sHtml } = await axios.get(searchUrl, {
+        headers: {
+          "User-Agent": UA,
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        timeout: 20000,
+        maxRedirects: 5,
       });
       const ids = [];
       const seen = new Set();
