@@ -108,7 +108,7 @@ module.exports = async function handler(req, res) {
 
   // In development we always reload to pick up plugin changes
   const isDev = process.env.NODE_ENV !== "production";
-  const registry = loadRegistry({ fresh: isDev });
+  const registry = loadRegistry({ fresh: true });
 
   const slug = parseSlug(req).filter(Boolean);
 
