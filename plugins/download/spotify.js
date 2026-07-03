@@ -90,48 +90,78 @@ module.exports = {
 
     try {
       let targetUrl = String(trackUrl).trim();
-      if (!/^https?:\/\//i.test(targetUrl)) {
-        targetUrl = `https://open.spotify.com/track/${targetUrl}`;
+      let trackId = "";
+      const idMatch = targetUrl.match(/track[/:]([a-zA-Z0-9]{22})/);
+      if (idMatch) {
+        trackId = idMatch[1];
+      } else if (/^[a-zA-Z0-9]{22}$/.test(targetUrl)) {
+        trackId = targetUrl;
+      }
+      if (!trackId) {
+        return res.status(400).json({
+          status: "error",
+          message: "رابط أو ID أغنية Spotify غير صالح.",
+        });
       }
 
-      const spotifyRes = await axios.get(targetUrl, { timeout: 15000 });
-      const htmlText = spotifyRes.data;
+      const UA =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
 
-      const titleMatch = htmlText.match(/(?<=:title" content=")(.*?)(?=")/gm);
-      const authorMatch = htmlText.match(
-        /(?<=:description" content=")(.*?)(?= · )/gm
+      // Use embed page (reliable, no auth) to extract metadata
+      const embedRes = await axios.get(
+        `https://open.spotify.com/embed/track/${trackId}`,
+        {
+          headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
+          timeout: 15000,
+        }
       );
-      const coverMatch = htmlText.match(/(?<=:image" content=")(.*?)(?=")/gm);
+      const htmlText = embedRes.data;
+      const nameMatch = htmlText.match(/"name":"([^"]+)","uri":"spotify:track:/);
+      const artistsMatch = htmlText.match(/"artists":\[([^\]]+)\]/);
+      const coverMatch = htmlText.match(
+        /"url":"(https:\/\/(?:i\.scdn\.co|image-cdn[^"/]*\.spotifycdn\.com)\/image\/[^"]+)"/
+      );
 
-      if (!titleMatch || !authorMatch) {
+      if (!nameMatch) {
         return res
           .status(400)
           .json({ status: "error", message: "فشل استخراج بيانات الأغنية." });
       }
 
-      const title = titleMatch[0];
-      const artist = authorMatch[0];
-      const cover = coverMatch ? coverMatch[0] : "";
+      const title = nameMatch[1];
+      const artistNames = [];
+      if (artistsMatch) {
+        const re = /"name":"([^"]+)"/g;
+        let mm;
+        while ((mm = re.exec(artistsMatch[1])) !== null) artistNames.push(mm[1]);
+      }
+      const artist = artistNames.join(", ");
+      const cover = coverMatch ? coverMatch[1] : "";
 
-      const searchQuery = encodeURIComponent(`${title} ${artist} audio`);
+      // Find YouTube video via Yahoo (DDG returns 403/429 often)
+      const searchQuery = `${title} ${artist} audio`;
       const ytSearchRes = await axios.get(
-        `https://html.duckduckgo.com/html/?q=${searchQuery}+site%3Ayoutube.com`,
+        `https://search.yahoo.com/search?p=${encodeURIComponent(
+          searchQuery + " site:youtube.com"
+        )}&n=10`,
         {
           headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "User-Agent": UA,
+            Accept: "text/html,application/xhtml+xml",
+            "Accept-Language": "en-US,en;q=0.9",
           },
           timeout: 15000,
         }
       );
       const ytHtml = ytSearchRes.data;
-      const ytUrlMatch = ytHtml.match(/watch\?v=[a-zA-Z0-9_-]{11}/);
+      const ytUrlMatch = ytHtml.match(/(?:watch%3[fF]v%3[dD]|watch\?v=)([a-zA-Z0-9_-]{11})/);
       if (!ytUrlMatch) {
         return res
           .status(404)
           .json({ status: "error", message: "الأغنية غير متاحة حالياً." });
       }
 
-      const youtubeVideoUrl = `https://www.youtube.com/${ytUrlMatch[0]}`;
+      const youtubeVideoUrl = `https://www.youtube.com/watch?v=${ytUrlMatch[1]}`;
       const st = new SaveTubeEngine();
       const finalMp3Url = await st.getDownloadUrl(youtubeVideoUrl);
       if (!finalMp3Url) throw new Error("فشل توليد رابط التحميل.");
