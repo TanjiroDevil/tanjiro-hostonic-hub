@@ -1,49 +1,20 @@
-// Spotify track search (no token) — DuckDuckGo → open.spotify.com/track/{id} → OG metadata
+// Spotify-like track search using Apple iTunes public Search API (no key, very reliable).
+// Note: results are sourced from iTunes because scraping Spotify's public pages / SERPs
+// is blocked from serverless egress. Front-end shape stays identical.
 const axios = require("axios");
 
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
 
-function pick(re, html) {
-  const m = html.match(re);
-  return m ? m[1] : "";
-}
-
-async function fetchTrack(id) {
-  try {
-    const { data: html } = await axios.get(
-      `https://open.spotify.com/embed/track/${id}`,
-      {
-        headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
-        timeout: 15000,
-      }
-    );
-    // Embed page contains an inline JSON blob with track metadata.
-    const nameMatch = html.match(/"name":"([^"]+)","uri":"spotify:track:/);
-    const artistsMatch = html.match(/"artists":\[([^\]]+)\]/);
-    const durationMatch = html.match(/"duration":(\d+)/);
-    const coverMatch = html.match(/"url":"(https:\/\/(?:i\.scdn\.co|image-cdn[^"/]*\.spotifycdn\.com)\/image\/[^"]+)"/);
-    if (!nameMatch) return null;
-    const artistNames = [];
-    if (artistsMatch) {
-      const re = /"name":"([^"]+)"/g;
-      let m;
-      while ((m = re.exec(artistsMatch[1])) !== null) artistNames.push(m[1]);
-    }
-    return {
-      id,
-      name: nameMatch[1],
-      artist: artistNames.join(", "),
-      url: `https://open.spotify.com/track/${id}`,
-      image: coverMatch ? coverMatch[1] : "",
-      duration_ms: durationMatch ? parseInt(durationMatch[1], 10) : 0,
-    };
-  } catch {
-    return null;
-  }
+function upgradeArtwork(url) {
+  if (!url) return "";
+  // iTunes returns 100x100bb.jpg — bump to 512x512 for nicer cards.
+  return url.replace(/\/\d+x\d+bb(-\d+)?\.(jpg|png)$/i, "/512x512bb.$2");
 }
 
 module.exports = {
-  description: "Spotify tracks search (name/artist) via public search — no API keys.",
+  description:
+    "بحث عن الأغاني (اسم/فنان) عبر iTunes Public Search API — بدون مفاتيح.",
   method: "GET",
   parameters: [
     { name: "q", required: true, description: "كلمة البحث (اسم الأغنية)." },
@@ -53,7 +24,11 @@ module.exports = {
   handler: async (req, res) => {
     const q = (req.query && (req.query.q || req.query.query)) || "";
     const artist = (req.query && req.query.artist) || "";
-    const limit = Math.min(Math.max(parseInt(req.query?.limit || "10", 10) || 10, 1), 50);
+    const limit = Math.min(
+      Math.max(parseInt(req.query?.limit || "10", 10) || 10, 1),
+      50
+    );
+
     if (!q || !q.trim()) {
       return res.status(200).json({
         title: "Spotify Search",
@@ -61,56 +36,39 @@ module.exports = {
         usage: "/api/search/spot?q=NAME&artist=OPTIONAL&limit=10",
       });
     }
+
     try {
-      const query = `${q.trim()}${artist && artist.trim() ? " " + artist.trim() : ""}`;
-      const ids = [];
-      const seen = new Set();
-      const re = /open\.spotify\.com(?:%2[fF]|\/)track(?:%2[fF]|\/)([a-zA-Z0-9]{22})/g;
-      // Yahoo paginates with b=1,11,21... (10 per page). Fetch pages until we hit limit.
-      const pageSize = 10;
-      const maxPages = Math.ceil(Math.min(limit, 50) / pageSize) + 2;
-      for (let page = 0; page < maxPages && ids.length < limit; page++) {
-        const b = page * pageSize + 1;
-        const searchUrl = `https://search.yahoo.com/search?p=${encodeURIComponent(
-          query + " site:open.spotify.com/track"
-        )}&b=${b}&n=${pageSize}`;
-        let sHtml = "";
-        try {
-          const r = await axios.get(searchUrl, {
-            headers: {
-              "User-Agent": UA,
-              Accept: "text/html,application/xhtml+xml",
-              "Accept-Language": "en-US,en;q=0.9",
-            },
-            timeout: 20000,
-            maxRedirects: 5,
-          });
-          sHtml = r.data;
-        } catch {
-          break;
-        }
-        let m;
-        let foundOnPage = 0;
-        re.lastIndex = 0;
-        while ((m = re.exec(sHtml)) !== null) {
-          if (!seen.has(m[1])) {
-            seen.add(m[1]);
-            ids.push(m[1]);
-            foundOnPage++;
-            if (ids.length >= limit) break;
-          }
-        }
-        if (foundOnPage === 0) break;
-      }
-      if (ids.length === 0) {
-        return res.status(200).json({
-          status: "success",
-          total_results: 0,
-          tracks: [],
-          dev: "Tanjiro ✨",
-        });
-      }
-      const tracks = (await Promise.all(ids.map(fetchTrack))).filter(Boolean);
+      const term = `${q.trim()}${artist && artist.trim() ? " " + artist.trim() : ""}`;
+      const { data } = await axios.get("https://itunes.apple.com/search", {
+        params: {
+          media: "music",
+          entity: "song",
+          limit,
+          term,
+        },
+        headers: { "User-Agent": UA, Accept: "application/json" },
+        timeout: 15000,
+      });
+
+      const results = Array.isArray(data?.results) ? data.results : [];
+      const tracks = results.slice(0, limit).map((r) => {
+        const id = String(r.trackId || "");
+        const name = r.trackName || "";
+        const artistName = r.artistName || "";
+        return {
+          id,
+          name,
+          artist: artistName,
+          url:
+            r.trackViewUrl ||
+            `https://open.spotify.com/search/${encodeURIComponent(
+              `${name} ${artistName}`
+            )}`,
+          image: upgradeArtwork(r.artworkUrl100 || r.artworkUrl60 || ""),
+          duration_ms: r.trackTimeMillis || 0,
+        };
+      });
+
       return res.status(200).json({
         status: "success",
         total_results: tracks.length,

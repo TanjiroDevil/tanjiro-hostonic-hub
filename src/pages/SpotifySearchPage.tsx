@@ -45,7 +45,12 @@ export function SpotifySearchPage() {
     setIsPreparing(true);
     const loadingToast = toast.loading('جاري تحضير ملف الصوت...');
     try {
-      const res = await fetch(`/api/download/spotify?url=${encodeURIComponent(track.url)}`);
+      const dlParams = new URLSearchParams({
+        title: track.name,
+        artist: track.artist,
+        url: track.url,
+      });
+      const res = await fetch(`/api/download/spotify?${dlParams.toString()}`);
       if (!res.ok) throw new Error('fail');
       const data = await res.json();
       if (data.status !== 'success' || !data.download_url) throw new Error('fail');
