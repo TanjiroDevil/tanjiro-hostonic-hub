@@ -50,12 +50,84 @@ class SaveTubeEngine {
   }
 }
 
+const UA_DL =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
+
+async function findYouTubeId(query) {
+  // 1) Direct YouTube results page (works from serverless IPs).
+  try {
+    const yt = await axios.get(
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
+      {
+        headers: {
+          "User-Agent": UA_DL,
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        timeout: 15000,
+      }
+    );
+    const m = yt.data.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+    if (m) return m[1];
+  } catch {}
+  // 2) Fallback: Yahoo SERP.
+  try {
+    const y = await axios.get(
+      `https://search.yahoo.com/search?p=${encodeURIComponent(
+        query + " site:youtube.com"
+      )}&n=10`,
+      {
+        headers: { "User-Agent": UA_DL, "Accept-Language": "en-US,en;q=0.9" },
+        timeout: 15000,
+      }
+    );
+    const m = y.data.match(
+      /(?:watch%3[fF]v%3[dD]|watch\?v=)([a-zA-Z0-9_-]{11})/
+    );
+    if (m) return m[1];
+  } catch {}
+  return "";
+}
+
+async function metadataFromSpotify(trackId) {
+  try {
+    const r = await axios.get(
+      `https://open.spotify.com/embed/track/${trackId}`,
+      {
+        headers: { "User-Agent": UA_DL, "Accept-Language": "en-US,en;q=0.9" },
+        timeout: 15000,
+      }
+    );
+    const html = r.data;
+    const nameMatch = html.match(/"name":"([^"]+)","uri":"spotify:track:/);
+    const artistsMatch = html.match(/"artists":\[([^\]]+)\]/);
+    const coverMatch = html.match(
+      /"url":"(https:\/\/(?:i\.scdn\.co|image-cdn[^"/]*\.spotifycdn\.com)\/image\/[^"]+)"/
+    );
+    if (!nameMatch) return null;
+    const artistNames = [];
+    if (artistsMatch) {
+      const re = /"name":"([^"]+)"/g;
+      let mm;
+      while ((mm = re.exec(artistsMatch[1])) !== null) artistNames.push(mm[1]);
+    }
+    return {
+      title: nameMatch[1],
+      artist: artistNames.join(", "),
+      cover: coverMatch ? coverMatch[1] : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   description:
-    "تحميل أغنية Spotify كـ MP3 عبر محرك SaveTube (يدعم رابط الأغنية أو الـ ID).",
+    "تحميل أغنية كـ MP3 عبر محرك SaveTube. يقبل title+artist (مفضّل) أو رابط/ID أغنية Spotify.",
   method: "GET",
   parameters: [
-    { name: "url", required: true, description: "رابط أو ID أغنية Spotify." },
+    { name: "title", required: false, description: "اسم الأغنية." },
+    { name: "artist", required: false, description: "اسم الفنان." },
+    { name: "url", required: false, description: "رابط أو ID أغنية Spotify." },
   ],
   handler: async (req, res) => {
     let queryParams = req.query || {};
@@ -68,7 +140,6 @@ module.exports = {
         queryParams = Object.fromEntries(urlObj.searchParams.entries());
       } catch (e) {}
     }
-
     let body = req.body || {};
     if (typeof body === "string") {
       try {
@@ -76,100 +147,74 @@ module.exports = {
       } catch (e) {}
     }
 
-    const trackUrl =
-      queryParams.url || body.url || queryParams.id || body.id;
+    const title = (queryParams.title || body.title || "").toString().trim();
+    const artist = (queryParams.artist || body.artist || "").toString().trim();
+    const trackUrl = (
+      queryParams.url ||
+      body.url ||
+      queryParams.id ||
+      body.id ||
+      ""
+    )
+      .toString()
+      .trim();
 
-    if (!trackUrl || String(trackUrl).trim().length === 0) {
+    if (!title && !trackUrl) {
       return res.status(200).json({
         title: "Spotify SaveTube MP3 Downloader API",
         status: "Online ✅",
-        usage: "?url=SPOTIFY_URL",
+        usage: "?title=NAME&artist=OPTIONAL   أو   ?url=SPOTIFY_URL",
         dev: "Tanjiro ✨",
       });
     }
 
     try {
-      let targetUrl = String(trackUrl).trim();
-      let trackId = "";
-      const idMatch = targetUrl.match(/track[/:]([a-zA-Z0-9]{22})/);
-      if (idMatch) {
-        trackId = idMatch[1];
-      } else if (/^[a-zA-Z0-9]{22}$/.test(targetUrl)) {
-        trackId = targetUrl;
-      }
-      if (!trackId) {
-        return res.status(400).json({
-          status: "error",
-          message: "رابط أو ID أغنية Spotify غير صالح.",
-        });
-      }
+      let finalTitle = title;
+      let finalArtist = artist;
+      let cover = "";
 
-      const UA =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
-
-      // Use embed page (reliable, no auth) to extract metadata
-      const embedRes = await axios.get(
-        `https://open.spotify.com/embed/track/${trackId}`,
-        {
-          headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
-          timeout: 15000,
+      if (!finalTitle && trackUrl) {
+        const idMatch = trackUrl.match(/track[/:]([a-zA-Z0-9]{22})/);
+        const trackId = idMatch
+          ? idMatch[1]
+          : /^[a-zA-Z0-9]{22}$/.test(trackUrl)
+          ? trackUrl
+          : "";
+        if (!trackId) {
+          return res.status(400).json({
+            status: "error",
+            message: "أدخل title أو رابط/ID أغنية Spotify صالح.",
+          });
         }
-      );
-      const htmlText = embedRes.data;
-      const nameMatch = htmlText.match(/"name":"([^"]+)","uri":"spotify:track:/);
-      const artistsMatch = htmlText.match(/"artists":\[([^\]]+)\]/);
-      const coverMatch = htmlText.match(
-        /"url":"(https:\/\/(?:i\.scdn\.co|image-cdn[^"/]*\.spotifycdn\.com)\/image\/[^"]+)"/
-      );
-
-      if (!nameMatch) {
-        return res
-          .status(400)
-          .json({ status: "error", message: "فشل استخراج بيانات الأغنية." });
-      }
-
-      const title = nameMatch[1];
-      const artistNames = [];
-      if (artistsMatch) {
-        const re = /"name":"([^"]+)"/g;
-        let mm;
-        while ((mm = re.exec(artistsMatch[1])) !== null) artistNames.push(mm[1]);
-      }
-      const artist = artistNames.join(", ");
-      const cover = coverMatch ? coverMatch[1] : "";
-
-      // Find YouTube video via Yahoo (DDG returns 403/429 often)
-      const searchQuery = `${title} ${artist} audio`;
-      const ytSearchRes = await axios.get(
-        `https://search.yahoo.com/search?p=${encodeURIComponent(
-          searchQuery + " site:youtube.com"
-        )}&n=10`,
-        {
-          headers: {
-            "User-Agent": UA,
-            Accept: "text/html,application/xhtml+xml",
-            "Accept-Language": "en-US,en;q=0.9",
-          },
-          timeout: 15000,
+        const meta = await metadataFromSpotify(trackId);
+        if (!meta) {
+          return res.status(400).json({
+            status: "error",
+            message: "فشل استخراج بيانات الأغنية من Spotify.",
+          });
         }
-      );
-      const ytHtml = ytSearchRes.data;
-      const ytUrlMatch = ytHtml.match(/(?:watch%3[fF]v%3[dD]|watch\?v=)([a-zA-Z0-9_-]{11})/);
-      if (!ytUrlMatch) {
+        finalTitle = meta.title;
+        finalArtist = meta.artist;
+        cover = meta.cover;
+      }
+
+      const searchQuery = `${finalTitle} ${finalArtist} audio`.trim();
+      const videoId = await findYouTubeId(searchQuery);
+      if (!videoId) {
         return res
           .status(404)
           .json({ status: "error", message: "الأغنية غير متاحة حالياً." });
       }
 
-      const youtubeVideoUrl = `https://www.youtube.com/watch?v=${ytUrlMatch[1]}`;
+      const youtubeVideoUrl = `https://www.youtube.com/watch?v=${videoId}`;
       const st = new SaveTubeEngine();
       const finalMp3Url = await st.getDownloadUrl(youtubeVideoUrl);
       if (!finalMp3Url) throw new Error("فشل توليد رابط التحميل.");
 
       return res.status(200).json({
         status: "success",
-        title,
-        artist,
+        title: finalTitle,
+        artist: finalArtist,
         image: cover,
         youtube_source: youtubeVideoUrl,
         download_url: finalMp3Url,
