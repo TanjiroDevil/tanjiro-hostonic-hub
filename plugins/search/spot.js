@@ -63,28 +63,44 @@ module.exports = {
     }
     try {
       const query = `${q.trim()}${artist && artist.trim() ? " " + artist.trim() : ""}`;
-      const searchUrl = `https://search.yahoo.com/search?p=${encodeURIComponent(
-        query + " site:open.spotify.com/track"
-      )}&n=${Math.min(limit * 3, 50)}`;
-      const { data: sHtml } = await axios.get(searchUrl, {
-        headers: {
-          "User-Agent": UA,
-          Accept: "text/html,application/xhtml+xml",
-          "Accept-Language": "en-US,en;q=0.9",
-        },
-        timeout: 20000,
-        maxRedirects: 5,
-      });
       const ids = [];
       const seen = new Set();
       const re = /open\.spotify\.com(?:%2[fF]|\/)track(?:%2[fF]|\/)([a-zA-Z0-9]{22})/g;
-      let m;
-      while ((m = re.exec(sHtml)) !== null) {
-        if (!seen.has(m[1])) {
-          seen.add(m[1]);
-          ids.push(m[1]);
-          if (ids.length >= limit) break;
+      // Yahoo paginates with b=1,11,21... (10 per page). Fetch pages until we hit limit.
+      const pageSize = 10;
+      const maxPages = Math.ceil(Math.min(limit, 50) / pageSize) + 2;
+      for (let page = 0; page < maxPages && ids.length < limit; page++) {
+        const b = page * pageSize + 1;
+        const searchUrl = `https://search.yahoo.com/search?p=${encodeURIComponent(
+          query + " site:open.spotify.com/track"
+        )}&b=${b}&n=${pageSize}`;
+        let sHtml = "";
+        try {
+          const r = await axios.get(searchUrl, {
+            headers: {
+              "User-Agent": UA,
+              Accept: "text/html,application/xhtml+xml",
+              "Accept-Language": "en-US,en;q=0.9",
+            },
+            timeout: 20000,
+            maxRedirects: 5,
+          });
+          sHtml = r.data;
+        } catch {
+          break;
         }
+        let m;
+        let foundOnPage = 0;
+        re.lastIndex = 0;
+        while ((m = re.exec(sHtml)) !== null) {
+          if (!seen.has(m[1])) {
+            seen.add(m[1]);
+            ids.push(m[1]);
+            foundOnPage++;
+            if (ids.length >= limit) break;
+          }
+        }
+        if (foundOnPage === 0) break;
       }
       if (ids.length === 0) {
         return res.status(200).json({
