@@ -1,6 +1,7 @@
 // Spotify → SaveTube MP3 downloader (CommonJS for unified dispatcher)
 const axios = require("axios");
 const crypto = require("crypto");
+const { finished } = require("stream/promises");
 
 class SaveTubeEngine {
   constructor() {
@@ -299,7 +300,8 @@ async function streamMp3(downloadUrl, res, filename) {
     `attachment; filename="${safe}.mp3"; filename*=UTF-8''${encodeURIComponent(safe)}.mp3`
   );
   res.setHeader("Cache-Control", "no-store");
-  return upstream.data.pipe(res);
+  upstream.data.pipe(res);
+  return finished(upstream.data);
 }
 
 async function metadataFromSpotify(trackId) {
