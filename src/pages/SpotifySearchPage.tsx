@@ -58,10 +58,8 @@ export function SpotifySearchPage() {
         .replace(/[\\/:*?"<>|]+/g, '')
         .trim();
 
-      // Fetch as blob for instant/silent download (no browser navigation)
-      const audioRes = await fetch(data.download_url);
-      if (!audioRes.ok) throw new Error('audio fetch fail');
-      const blob = await audioRes.blob();
+      const blob = await res.blob();
+      if (!blob.size) throw new Error('empty audio');
       const blobUrl = URL.createObjectURL(blob);
 
       const a = document.createElement('a');
