@@ -54,10 +54,7 @@ export function SpotifySearchPage() {
       });
       const res = await fetch(`/api/download/spotify?${dlParams.toString()}`);
       if (!res.ok) throw new Error('fail');
-      const data = await res.json();
-      if (data.status !== 'success' || !data.download_url) throw new Error('fail');
-
-      const safeName = `${(data.title || track.name)} - ${(data.artist || track.artist)}`
+      const safeName = `${track.name} - ${track.artist}`
         .replace(/[\\/:*?"<>|]+/g, '')
         .trim();
 
