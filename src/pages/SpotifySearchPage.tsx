@@ -49,20 +49,17 @@ export function SpotifySearchPage() {
         title: track.name,
         artist: track.artist,
         url: track.url,
+        duration_ms: String(track.duration_ms || 0),
+        format: 'blob',
       });
       const res = await fetch(`/api/download/spotify?${dlParams.toString()}`);
       if (!res.ok) throw new Error('fail');
-      const data = await res.json();
-      if (data.status !== 'success' || !data.download_url) throw new Error('fail');
-
-      const safeName = `${(data.title || track.name)} - ${(data.artist || track.artist)}`
+      const safeName = `${track.name} - ${track.artist}`
         .replace(/[\\/:*?"<>|]+/g, '')
         .trim();
 
-      // Fetch as blob for instant/silent download (no browser navigation)
-      const audioRes = await fetch(data.download_url);
-      if (!audioRes.ok) throw new Error('audio fetch fail');
-      const blob = await audioRes.blob();
+      const blob = await res.blob();
+      if (!blob.size) throw new Error('empty audio');
       const blobUrl = URL.createObjectURL(blob);
 
       const a = document.createElement('a');
