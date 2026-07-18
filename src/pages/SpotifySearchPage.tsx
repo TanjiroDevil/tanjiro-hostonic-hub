@@ -49,6 +49,8 @@ export function SpotifySearchPage() {
         title: track.name,
         artist: track.artist,
         url: track.url,
+        duration_ms: String(track.duration_ms || 0),
+        format: 'blob',
       });
       const res = await fetch(`/api/download/spotify?${dlParams.toString()}`);
       if (!res.ok) throw new Error('fail');
